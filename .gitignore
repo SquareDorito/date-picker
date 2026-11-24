@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+data/gcal-tokens.json
+data/gcal-credentials.json
+data/app-state.json
