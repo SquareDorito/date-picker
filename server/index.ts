@@ -6,6 +6,15 @@ import express from 'express';
 import type { Activity, Borough, DateNight } from '../shared/types.js';
 import { searchDateIdeasWithAgy } from './agy-search.js';
 import {
+  clearSessionCookie,
+  getLoginAuthUrl,
+  getSessionUser,
+  handleLoginCallback,
+  isAuthEnabled,
+  requireAuth,
+  setSessionCookie,
+} from './auth.js';
+import {
   disconnectGCal,
   getAuthUrl,
   getGCalStatus,
@@ -22,8 +31,32 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT || 3045);
 
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
+
+// --- Auth ---
+app.get('/api/auth/me', (req, res) => {
+  res.json({
+    authRequired: isAuthEnabled(),
+    user: getSessionUser(req),
+  });
+});
+
+app.get('/api/auth/google', (_req, res) => {
+  try {
+    res.redirect(getLoginAuthUrl());
+  } catch (err) {
+    res.status(400).send(err instanceof Error ? err.message : 'OAuth error');
+  }
+});
+
+app.post('/api/auth/logout', (_req, res) => {
+  clearSessionCookie(res);
+  res.json({ ok: true });
+});
+
+app.use('/api', requireAuth);
 
 // --- State & Activities ---
 app.get('/api/state', async (_req, res) => {
@@ -248,10 +281,26 @@ app.get('/api/gcal/auth-url', (_req, res) => {
 
 app.get('/api/gcal/callback', async (req, res) => {
   const code = req.query.code as string | undefined;
+  const oauthState = req.query.state as string | undefined;
+  const baseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173';
+
   if (!code) {
     res.status(400).send('Missing OAuth code.');
     return;
   }
+
+  if (oauthState === 'login') {
+    try {
+      const user = await handleLoginCallback(code);
+      setSessionCookie(res, user);
+      res.redirect(`${baseUrl}/`);
+    } catch (err) {
+      const reason = err instanceof Error && err.message === 'unauthorized' ? 'unauthorized' : 'failed';
+      res.redirect(`${baseUrl}/?auth_error=${reason}`);
+    }
+    return;
+  }
+
   try {
     await handleOAuthCallback(code);
     // Automatically sync on first connect
@@ -260,9 +309,7 @@ app.get('/api/gcal/callback', async (req, res) => {
     state.lastSyncedAt = new Date().toISOString();
     saveState(state);
 
-    const redirectTarget =
-      process.env.NODE_ENV === 'production' ? '/?gcal=connected' : 'http://localhost:5173/?gcal=connected';
-    res.redirect(redirectTarget);
+    res.redirect(`${baseUrl}/?gcal=connected`);
   } catch (err) {
     res.status(500).send(`OAuth callback failed: ${err instanceof Error ? err.message : String(err)}`);
   }

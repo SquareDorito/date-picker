@@ -23,7 +23,7 @@ import type {
   DateNight,
   GCalStatus,
 } from '../../shared/types';
-import { api } from './api';
+import { api, type AuthUser } from './api';
 import { AddActivityModal } from './components/AddActivityModal';
 import { GCalModal } from './components/GCalModal';
 
@@ -91,6 +91,9 @@ function formatTime12h(time24: string): string {
 }
 
 export default function App() {
+  const [authRequired, setAuthRequired] = useState(false);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [dateNights, setDateNights] = useState<DateNight[]>([]);
   const [gcalStatus, setGcalStatus] = useState<GCalStatus | null>(null);
@@ -135,6 +138,13 @@ export default function App() {
   }, []);
 
   const loadAll = useCallback(async () => {
+    const auth = await api.getAuthMe();
+    setAuthRequired(auth.authRequired);
+    setAuthUser(auth.user);
+    if (auth.authRequired && !auth.user) {
+      setLoading(false);
+      return;
+    }
     const data = await api.getState();
     setActivities(data.activities);
     setDateNights(data.dateNights);
@@ -148,6 +158,15 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('gcal') === 'connected') {
       showToast('Google Calendar connected & synced!');
+      window.history.replaceState({}, '', '/');
+    }
+    const err = params.get('auth_error');
+    if (err) {
+      setAuthError(
+        err === 'unauthorized'
+          ? 'That Google account is not on the allowed list.'
+          : 'Google sign-in failed. Please try again.',
+      );
       window.history.replaceState({}, '', '/');
     }
   }, [loadAll, showToast]);
@@ -326,6 +345,33 @@ export default function App() {
     );
   }
 
+  if (authRequired && !authUser) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-stone-50 px-4">
+        <div className="w-full max-w-sm rounded-3xl border border-stone-200 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-600 text-white shadow-xs">
+            <Sparkles className="h-6 w-6" />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-stone-900">DateNight NYC</h1>
+          <p className="mt-1.5 text-xs text-stone-500">
+            Sign in with Google to view and plan date nights.
+          </p>
+          {authError && (
+            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+              {authError}
+            </div>
+          )}
+          <a
+            href="/api/auth/google"
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800"
+          >
+            Sign in with Google
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900">
       {/* Toast */}
@@ -396,6 +442,19 @@ export default function App() {
               <Plus className="h-3.5 w-3.5" />
               Add Idea
             </button>
+
+            {authUser && (
+              <button
+                onClick={async () => {
+                  await api.logout();
+                  setAuthUser(null);
+                }}
+                title={`Signed in as ${authUser.email}`}
+                className="rounded-xl border border-stone-200 bg-white px-2.5 py-2 text-xs font-medium text-stone-500 hover:bg-stone-50"
+              >
+                Sign out
+              </button>
+            )}
           </div>
         </div>
       </header>

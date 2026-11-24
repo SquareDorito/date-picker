@@ -7,6 +7,17 @@ import type {
   GCalStatus,
 } from '../../shared/types';
 
+export interface AuthUser {
+  email: string;
+  name?: string;
+  picture?: string;
+}
+
+export interface AuthMeResponse {
+  authRequired: boolean;
+  user: AuthUser | null;
+}
+
 export interface AppStateResponse {
   activities: Activity[];
   dateNights: DateNight[];
@@ -27,6 +38,8 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getAuthMe: () => request<AuthMeResponse>('/api/auth/me'),
+  logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
   getState: () => request<AppStateResponse>('/api/state'),
   addActivity: (data: Partial<Activity>) =>
     request<Activity>('/api/activities', { method: 'POST', body: JSON.stringify(data) }),
