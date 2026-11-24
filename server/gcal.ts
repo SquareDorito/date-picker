@@ -7,8 +7,10 @@ import type { DateNight, GCalConfig, GCalStatus } from '../shared/types.js';
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const CREDENTIALS_PATH = path.join(DATA_DIR, 'gcal-credentials.json');
 const TOKENS_PATH = path.join(DATA_DIR, 'gcal-tokens.json');
-const DEFAULT_REDIRECT_URI =
-  process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3045/api/gcal/callback';
+
+function getDefaultRedirectUri(): string {
+  return process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3045/api/gcal/callback';
+}
 
 interface StoredCredentials {
   client_id: string;
@@ -17,11 +19,12 @@ interface StoredCredentials {
 }
 
 function getCredentials(): StoredCredentials | null {
+  const redirectUri = getDefaultRedirectUri();
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     return {
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: DEFAULT_REDIRECT_URI,
+      client_id: process.env.GOOGLE_CLIENT_ID.trim(),
+      client_secret: process.env.GOOGLE_CLIENT_SECRET.trim(),
+      redirect_uri: redirectUri,
     };
   }
 
@@ -32,7 +35,7 @@ function getCredentials(): StoredCredentials | null {
       return {
         client_id: block.client_id,
         client_secret: block.client_secret,
-        redirect_uri: DEFAULT_REDIRECT_URI,
+        redirect_uri: redirectUri,
       };
     }
   }
@@ -50,7 +53,7 @@ export function saveCredentials(clientId: string, clientSecret: string): void {
       {
         client_id: clientId.trim(),
         client_secret: clientSecret.trim(),
-        redirect_uri: DEFAULT_REDIRECT_URI,
+        redirect_uri: getDefaultRedirectUri(),
       },
       null,
       2,
@@ -66,7 +69,7 @@ function createOAuthClient(): OAuth2Client | null {
   const client = new google.auth.OAuth2(
     creds.client_id,
     creds.client_secret,
-    creds.redirect_uri || DEFAULT_REDIRECT_URI,
+    creds.redirect_uri || getDefaultRedirectUri(),
   );
 
   if (fs.existsSync(TOKENS_PATH)) {
