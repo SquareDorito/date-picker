@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="16" fill="#fff1f2" />
+  <!-- Stem -->
+  <path d="M32 34 C32 44, 31 52, 32 58" stroke="#15803d" stroke-width="4" stroke-linecap="round" fill="none" />
+  <!-- Leaves -->
+  <path d="M32 47 C24 46, 19 41, 20 37 C25 37, 30 41, 32 47 Z" fill="#22c55e" />
+  <path d="M32 44 C40 43, 45 38, 44 34 C39 34, 34 38, 32 44 Z" fill="#16a34a" />
+  <!-- Outer petals -->
+  <circle cx="32" cy="24" r="15" fill="#e11d48" />
+  <path d="M18 22 C18 13, 28 10, 32 16 C36 10, 46 13, 46 22 C46 31, 38 36, 32 36 C26 36, 18 31, 18 22 Z" fill="#f43f5e" />
+  <!-- Inner petal swirls -->
+  <path d="M23 22 C23 16, 30 14, 34 18 C38 15, 41 20, 39 25 C37 29, 27 30, 23 22 Z" fill="#fb7185" />
+  <path d="M27 21 C27 18, 32 17, 34 20 C36 23, 31 26, 28 24 C27 23, 27 22, 27 21 Z" fill="#be123c" />
+</svg>
