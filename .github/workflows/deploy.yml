@@ -1,0 +1,30 @@
+name: Deploy to kennoh-vm
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        env:
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key "$VM_USER@$VM_HOST" '
+            set -euo pipefail
+            cd /opt/apps/date-picker
+            git pull --ff-only
+            npm ci --no-audit --no-fund
+            npm run build
+            sudo systemctl restart date-picker
+            sudo systemctl is-active date-picker
+          '
